@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>极速绚丽烟花</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #bg-control {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            padding: 10px;
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 5px;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        #bg-control button {
+            background: #444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        #bg-control button:hover {
+            background: #666;
+        }
+        #bg-control label {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="bg-control">
+        <label for="bg-upload">选择背景图片:</label>
+        <input type="file" id="bg-upload" accept="image/*">
+        <button id="reset-bg">重置背景</button>
+    </div>
+    <canvas id="canvas"></canvas>
+    <script>// 初始化画布
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// 背景系统
+const bgImage = new Image();
+bgImage.crossOrigin = "Anonymous";
+
+// 默认渐变背景
+bgImage.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwMDAwMzg7Ii8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMDAwMDAwOyIvPjwvbGluZWFyR3JhZGllbnQ+PHJlY3QgZmlsbD0idXJsKCNnKSIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIvPjwvc3ZnPg==';
+
+// 背景控制事件
+document.getElementById('bg-upload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        bgImage.src = URL.createObjectURL(file);
+    }
+});
+
+document.getElementById('reset-bg').addEventListener('click', function() {
+    bgImage.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMwMDAwMzg7Ii8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMDAwMDAwOyIvPjwvbGluZWFyR3JhZGllbnQ+PHJlY3QgZmlsbD0idXJsKCNnKSIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIvPjwvc3ZnPg==';
+});
+
+// 背景图片适配
+bgImage.onload = function() {
+    URL.revokeObjectURL(bgImage.src);
+    const imgRatio = bgImage.width / bgImage.height;
+    const canvasRatio = canvas.width / canvas.height;
+    
+    if (imgRatio > canvasRatio) {
+        bgImage.displayWidth = bgImage.width * (canvas.height / bgImage.height);
+        bgImage.displayHeight = canvas.height;
+        bgImage.offsetX = (canvas.width - bgImage.displayWidth) / 2;
+        bgImage.offsetY = 0;
+    } else {
+        bgImage.displayWidth = canvas.width;
+        bgImage.displayHeight = bgImage.height * (canvas.width / bgImage.width);
+        bgImage.offsetX = 0;
+        bgImage.offsetY = (canvas.height - bgImage.displayHeight) / 2;
+    }
+};class Firework {
+    constructor(targetX, targetY) {
+        this.x = Math.random() * canvas.width;
+        this.y = canvas.height;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.speed = 3 + Math.random() * 4;
+        this.acceleration = 1.05;
+        this.angle = Math.atan2(targetY - this.y, targetX - this.x);
+        this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        this.trail = [];
+        this.brightness = 1;
+        this.trailLength = 15 + Math.floor(Math.random() * 10);
+        this.hasExploded = false;
+    }
+    
+    update() {
+        if (this.hasExploded) return false;
+        
+        const prevX = this.x;
+        const prevY = this.y;
+        
+        this.speed *= this.acceleration;
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+        
+        // 尾焰效果
+        this.trail.push({
+            x: this.x,
+            y: this.y,
+            brightness: this.brightness,
+            width: this.speed * 0.8
+        });
+        this.brightness *= 0.9;
+        if (this.trail.length > this.trailLength) this.trail.shift();
+        
+        // 爆炸检测
+        const distance = Math.hypot(this.x - this.targetX, this.y - this.targetY);
+        const prevDistance = Math.hypot(prevX - this.targetX, prevY - this.targetY);
+        
+        if (distance <= 10 || (prevDistance < distance && distance < 50)) {
+            this.hasExploded = true;
+            return false;
+        }
+        return true;
+    }
+    
+    explode() {
+        const particleCount = 800 + Math.floor(Math.random() * 400); // 更多粒子
+        const baseHue = Math.random() * 360;
+        const types = ['circle', 'spark', 'glow', 'star']; // 新增星形粒子
+        
+        for (let i = 0; i < particleCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 9 + 1; // 更广的速度范围
+            const hue = (baseHue + Math.random() * 120 - 60) % 360; // 更丰富的色相变化
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            particles.push({
+                x: this.x,
+                y: this.y,
+                vx: Math.cos(angle) * speed * (0.7 + Math.random() * 0.6), // 随机速度变化
+                vy: Math.sin(angle) * speed * (0.7 + Math.random() * 0.6),
+                color: `hsla(${hue}, 100%, ${50 + Math.random() * 40}%, 0.9)`, // 添加透明度
+                life: 100 + Math.random() * 100, // 更长的生命周期
+                size: Math.random() * 5 + 1,
+                type: type,
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.2, // 更快的旋转
+                shrinkSpeed: 0.95 + Math.random() * 0.04 // 粒子收缩效果
+            });
+        }
+        createText(this.x, this.y);
+    }
+}const particles = [];
+const fireworks = [];
+
+function createText(x, y) {
+    const texts = ["快乐", "烟花", "美好", "幸福"];
+    const text = texts[Math.floor(Math.random() * texts.length)];
+    const size = Math.min(canvas.width / 6, 60);
+    const hue = Math.random() * 60 + 30;
+    
+    for (let i = 0; i < text.length; i++) {
+        particles.push({
+            x: x + (i - text.length/2) * size * 0.9,
+            y: y,
+            vx: (Math.random() - 0.5) * 3,
+            vy: -4 - Math.random() * 3,
+            color: `hsla(${hue}, 100%, 70%, ${0.8 + Math.random() * 0.2})`,
+            life: 150,
+            char: text[i],
+            size: size,
+            isText: true,
+            gravity: 0.02 // 文字粒子更轻
+        });
+    }
+}
+
+// 绘制星形粒子
+function drawStar(ctx, x, y, size) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+        ctx.lineTo(0, size);
+        ctx.translate(0, size);
+        ctx.rotate((Math.PI * 2) / 10);
+        ctx.lineTo(0, -size * 0.5);
+        ctx.translate(0, -size * 0.5);
+        ctx.rotate((Math.PI * 2) / 10);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+}function render() {
+    // 背景渲染
+    ctx.globalAlpha = 0.15;
+    if (bgImage.complete) {
+        ctx.drawImage(bgImage, bgImage.offsetX, bgImage.offsetY, 
+                     bgImage.displayWidth, bgImage.displayHeight);
+    } else {
+        ctx.fillStyle = '#000033';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.globalAlpha = 1;
+    
+    // 烟花渲染
+    for (let i = fireworks.length - 1; i >= 0; i--) {
+        const fw = fireworks[i];
+        
+        if (fw.update()) {
+            // 绘制尾焰
+            ctx.lineCap = 'round';
+            for (let j = 1; j < fw.trail.length; j++) {
+                const alpha = (j / fw.trail.length) * fw.trail[j].brightness;
+                ctx.strokeStyle = `${fw.color.slice(0, -1)}, ${alpha})`;
+                ctx.lineWidth = fw.trail[j].width;
+                ctx.beginPath();
+                ctx.moveTo(fw.trail[j-1].x, fw.trail[j-1].y);
+                ctx.lineTo(fw.trail[j].x, fw.trail[j].y);
+                ctx.stroke();
+            }
+        } else {
+            fw.explode();
+            fireworks.splice(i, 1);
+        }
+    }
+    
+    // 粒子渲染（增强版）
+    const aliveParticles = [];
+    for (const p of particles) {
+        // 物理更新
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += (p.gravity || 0.05); // 可自定义重力
+        p.life--;
+        p.rotation += (p.rotationSpeed || 0);
+        p.size *= (p.shrinkSpeed || 0.98); // 粒子收缩
+        
+        if (p.life > 0 && p.size > 0.2 && p.y < canvas.height + 100) {
+            aliveParticles.push(p);
+            
+            ctx.globalAlpha = Math.min(p.life / 100, 0.9);
+            ctx.fillStyle = p.color;
+            
+            if (p.isText) {
+                ctx.font = `bold ${p.size}px 'Microsoft YaHei', sans-serif`;
+                ctx.fillText(p.char, p.x, p.y);
+            } else {
+                switch(p.type) {
+                    case 'spark':
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate(p.rotation);
+                        ctx.fillRect(-p.size/2, -p.size*3, p.size, p.size*6);
+                        ctx.restore();
+                        break;
+                    case 'glow':
+                        const gradient = ctx.createRadialGradient(
+                            p.x, p.y, 0, p.x, p.y, p.size*2
+                        );
+                        gradient.addColorStop(0, p.color);
+                        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size*2, 0, Math.PI*2);
+                        ctx.fill();
+                        break;
+                    case 'star':
+                        drawStar(ctx, p.x, p.y, p.size);
+                        break;
+                    default: // circle
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                        ctx.fill();
+                }
+            }
+        }
+    }
+    
+    particles.length = 0;
+    particles.push(...aliveParticles);
+    
+    requestAnimationFrame(render);
+}// 点击发射烟花
+canvas.addEventListener('click', (e) => {
+    for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+            fireworks.push(new Firework(
+                e.clientX + (Math.random() - 0.5) * 40,
+                e.clientY + (Math.random() - 0.5) * 40
+            ));
+        }, i * 100);
+    }
+});
+
+// 窗口大小调整
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    if (bgImage.complete) bgImage.onload();
+});
+
+// 启动
+render();
+autoFire();
+    </script>
+</body>
+</html>
